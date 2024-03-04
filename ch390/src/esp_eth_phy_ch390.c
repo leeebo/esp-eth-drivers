@@ -39,8 +39,10 @@ static esp_err_t ch390_update_link_duplex_speed(phy_ch390_t *ch390)
     eth_link_t link = bmsr.link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
     /* check if link status changed */
     if (ch390->phy_802_3.link_status != link) {
+        ESP_LOGI(TAG, "Link Status: %s", link == ETH_LINK_UP ? "UP" : "DOWN");
         /* when link up, read negotiation result */
         if (link == ETH_LINK_UP) {
+            vTaskDelay(pdMS_TO_TICKS(100));
             ESP_GOTO_ON_ERROR(eth->phy_reg_read(eth, addr, ETH_PHY_BMCR_REG_ADDR, &(bmcr.val)), err, TAG, "read BMCR failed");
             speed = bmcr.speed_select == 1 ? ETH_SPEED_100M : ETH_SPEED_10M;
             duplex = bmcr.duplex_mode == 1 ? ETH_DUPLEX_FULL : ETH_DUPLEX_HALF;
@@ -92,6 +94,10 @@ static esp_err_t ch390_reset(esp_eth_phy_t *phy)
         }
     }
     ESP_GOTO_ON_FALSE(to < ch390->phy_802_3.reset_timeout_ms / 10, ESP_FAIL, err, TAG, "PHY reset timeout");
+    /* set phy mode to auto */
+    ESP_GOTO_ON_ERROR(eth->phy_reg_write(eth, addr, ETH_PHY_BMCR_REG_ADDR, 0x1000), err, TAG, "PHY reset BMCR timeout");
+    ESP_GOTO_ON_ERROR(eth->phy_reg_write(eth, addr, ETH_PHY_ANAR_REG_ADDR, 0x01E1), err, TAG, "PHY reset ANAR timeout");
+    ESP_LOGD(TAG, "reset complete");
     return ESP_OK;
 err:
     return ret;
@@ -109,9 +115,12 @@ static esp_err_t ch390_init(esp_eth_phy_t *phy)
     uint32_t oui;
     uint8_t model;
     ESP_GOTO_ON_ERROR(esp_eth_phy_802_3_read_oui(phy_802_3, &oui), err, TAG, "read OUI failed");
+    ESP_LOGD(TAG, "current oui: 0x%06x", (unsigned int)oui);
     ESP_GOTO_ON_ERROR(esp_eth_phy_802_3_read_manufac_info(phy_802_3, &model, NULL), err, TAG, "read manufacturer's info failed");
+    ESP_LOGD(TAG, "current model: 0x%02x", model);
+    /* The actual OUI of CH390 is 0x1cdc64 */
     ESP_GOTO_ON_FALSE(oui == 0x1cdc64 && model == 0x01, ESP_FAIL, err, TAG, "wrong chip ID");
-
+    ESP_GOTO_ON_ERROR(ch390_reset(phy), err, TAG, "reset phy failed");
     return ESP_OK;
 err:
     return ret;
@@ -131,6 +140,7 @@ static esp_err_t ch390_loopback(esp_eth_phy_t *phy, bool enable)
         bmcr.en_loopback = 0;
     }
     ESP_GOTO_ON_ERROR(eth->phy_reg_write(eth, phy_802_3->addr, ETH_PHY_BMCR_REG_ADDR, bmcr.val), err, TAG, "write BMCR failed");
+    ESP_LOGD(TAG, "loopback %s", enable ? "enabled" : "disabled");
     return ESP_OK;
 err:
     return ret;
@@ -148,7 +158,7 @@ static esp_err_t ch390_set_speed(esp_eth_phy_t *phy, eth_speed_t speed)
     if (bmcr.en_loopback) {
         ESP_GOTO_ON_FALSE(speed == ETH_SPEED_100M, ESP_ERR_INVALID_STATE, err, TAG, "Speed must be 100M for loopback operation");
     }
-
+    ESP_LOGD(TAG, "set speed to %s", speed == ETH_SPEED_100M ? "100M" : "10M");
     return esp_eth_phy_802_3_set_speed(phy_802_3, speed);
 err:
     return ret;
