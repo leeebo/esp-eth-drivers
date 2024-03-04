@@ -128,6 +128,12 @@ menu "Ethernet Configuration"
                 help
                     Select external SPI-Ethernet module (DM9051).
 
+            config ETHERNET_USE_CH390
+                bool "CH390 Module"
+                select ETH_SPI_ETHERNET_CH390
+                help
+                    Select external SPI-Ethernet module (CH390).
+
             config ETHERNET_USE_KSZ8851SNL
                 bool "KSZ8851SNL Module"
                 select ETH_SPI_ETHERNET_KSZ8851SNL

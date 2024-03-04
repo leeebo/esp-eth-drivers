@@ -1,0 +1,5 @@
+version: "0.0.1"
+description: CH390 SPI Ethernet Controller Driver
+url: https://github.com/espressif/esp-eth-drivers/tree/master/ch390
+dependencies:
+  idf: ">=5.0"

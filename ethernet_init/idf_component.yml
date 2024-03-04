@@ -1,8 +1,12 @@
 dependencies:
   idf:
     version: '>=5.0'
-  lan867x:
-    override_path: "../lan867x"
+  # lan867x:
+  #   rules:
+  #     - if: "target in [esp32]"
+  #   override_path: "../lan867x"
+  ch390:
+    override_path: "../ch390"
 description: This component initializes Ethernet driver based on Espressif IoT Development Framework Configuration.
 url: https://github.com/espressif/esp-eth-drivers/tree/master/ethernet_init
-version: 0.1.0
+version: 0.1.1

@@ -18,7 +18,10 @@
 #if CONFIG_ETHERNET_PHY_LAN867X
 #include "esp_eth_phy_lan867x.h"
 #endif // CONFIG_ETHERNET_PHY_LAN867X
-
+#if CONFIG_ETHERNET_USE_CH390
+#include "esp_eth_mac_ch390.h"
+#include "esp_eth_phy_ch390.h"
+#endif // CONFIG_ETHERNET_USE_CH390
 
 #if CONFIG_ETHERNET_SPI_NUMBER
 #define SPI_ETHERNETS_NUM           CONFIG_ETHERNET_SPI_NUMBER
@@ -134,7 +137,7 @@ static esp_eth_handle_t eth_init_internal(eth_device *dev_out)
 
     // Init common MAC configs to default
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
-    mac_config.rx_task_stack_size = CONFIG_ETHERNET_RX_TASK_STACK_SIZE;
+    mac_config.rx_task_stack_size = 3096;
 
     // Init vendor specific MAC config to default
     eth_esp32_emac_config_t esp32_emac_config = ETH_ESP32_EMAC_DEFAULT_CONFIG();
@@ -242,7 +245,7 @@ err:
  * @brief Ethernet SPI modules initialization
  *
  * @param[in] spi_eth_module_config specific SPI Ethernet module configuration
- * @param[out] dev device information of the ethernet
+ * @param[out] dev_out device information of the ethernet
  * @return
  *          - esp_eth_handle_t if init succeeded
  *          - NULL if init failed
@@ -258,7 +261,7 @@ static esp_eth_handle_t eth_init_spi(spi_eth_module_config_t *spi_eth_module_con
 
     // Init common MAC and PHY configs to default
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
-    mac_config.rx_task_stack_size = CONFIG_ETHERNET_RX_TASK_STACK_SIZE;
+    mac_config.rx_task_stack_size = 3072;
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
 
     // Update PHY config based on board specific configuration
@@ -277,15 +280,21 @@ static esp_eth_handle_t eth_init_spi(spi_eth_module_config_t *spi_eth_module_con
 #if CONFIG_ETHERNET_USE_KSZ8851SNL
     eth_ksz8851snl_config_t ksz8851snl_config = ETH_KSZ8851SNL_DEFAULT_CONFIG(CONFIG_ETHERNET_SPI_HOST, &spi_devcfg);
     ksz8851snl_config.int_gpio_num = spi_eth_module_config->int_gpio;
-    dev->mac = esp_eth_mac_new_ksz8851snl(&ksz8851snl_config, &mac_config);
-    dev->phy = esp_eth_phy_new_ksz8851snl(&phy_config);
-    sprintf(dev->dev_info.name, "KSZ8851SNL");
+    dev_out->mac = esp_eth_mac_new_ksz8851snl(&ksz8851snl_config, &mac_config);
+    dev_out->phy = esp_eth_phy_new_ksz8851snl(&phy_config);
+    sprintf(dev_out->dev_info.name, "KSZ8851SNL");
 #elif CONFIG_ETHERNET_USE_DM9051
     eth_dm9051_config_t dm9051_config = ETH_DM9051_DEFAULT_CONFIG(CONFIG_ETHERNET_SPI_HOST, &spi_devcfg);
     dm9051_config.int_gpio_num = spi_eth_module_config->int_gpio;
-    dev->mac = esp_eth_mac_new_dm9051(&dm9051_config, &mac_config);
-    dev->phy = esp_eth_phy_new_dm9051(&phy_config);
-    sprintf(dev->dev_info.name, "DM9051");
+    dev_out->mac = esp_eth_mac_new_dm9051(&dm9051_config, &mac_config);
+    dev_out->phy = esp_eth_phy_new_dm9051(&phy_config);
+    sprintf(dev_out->dev_info.name, "DM9051");
+#elif CONFIG_ETHERNET_USE_CH390
+    eth_ch390_config_t ch390_config = ETH_CH390_DEFAULT_CONFIG(CONFIG_ETHERNET_SPI_HOST, &spi_devcfg);
+    ch390_config.int_gpio_num = spi_eth_module_config->int_gpio;
+    dev_out->mac = esp_eth_mac_new_ch390(&ch390_config, &mac_config);
+    dev_out->phy = esp_eth_phy_new_ch390(&phy_config);
+    sprintf(dev_out->dev_info.name, "CH390");
 #elif CONFIG_ETHERNET_USE_W5500
     eth_w5500_config_t w5500_config = ETH_W5500_DEFAULT_CONFIG(CONFIG_ETHERNET_SPI_HOST, &spi_devcfg);
     w5500_config.int_gpio_num = spi_eth_module_config->int_gpio;
